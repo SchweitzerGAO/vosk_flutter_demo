@@ -5,11 +5,11 @@ import 'package:record/record.dart';
 import 'package:vosk_flutter/vosk_flutter.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const AsrApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+class AsrApp extends StatelessWidget {
+  const AsrApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +28,7 @@ class VoskFlutterDemo extends StatefulWidget {
 
 class _VoskFlutterDemoState extends State<VoskFlutterDemo> {
   static const _textStyle = TextStyle(fontSize: 30, color: Colors.black);
-  static const _modelName = 'assets/models/vosk-model-small-en-us-0.15.zip';
+  static const _modelName = '';
   static const _sampleRate = 16000;
 
   final _vosk = VoskFlutterPlugin.instance();
@@ -46,52 +46,32 @@ class _VoskFlutterDemoState extends State<VoskFlutterDemo> {
   @override
   void initState() {
     super.initState();
-    /// load from server
-    // _modelLoader
-    //     .loadModelsList()
-    //     .then((modelsList) =>
-    //     modelsList.firstWhere((model) => model.name == _modelName))
-    //     .then((modelDescription) =>
-    //     _modelLoader.loadFromNetwork(modelDescription.url)) // load model
-    //     .then(
-    //         (modelPath) => _vosk.createModel(modelPath)) // create model object
-    //     .then((model) => setState(() => _model = model))
-    //     .then((_) => _vosk.createRecognizer(
-    //     model: _model!, sampleRate: _sampleRate)) // create recognizer
-    //     .then((value) => _recognizer = value)
-    //     .then((recognizer) {
-    //   if (Platform.isAndroid) {
-    //     _vosk
-    //         .initSpeechService(_recognizer!) // init speech service
-    //         .then((speechService) =>
-    //         setState(() => _speechService = speechService))
-    //         .catchError((e) => setState(() => _error = e.toString()));
-    //   }
-    // }).catchError((e) {
-    //   setState(() => _error = e.toString());
-    //   return null;
-    // });
-    /// load from asset
-    _modelLoader.loadFromAssets(_modelName)
+    /// load models from asset
+    loadModelFromAsset(_modelName);
+
+  }
+
+  void loadModelFromAsset(modelName){
+    _modelLoader.loadFromAssets(modelName)
         .then((modelPath) => _vosk.createModel(modelPath))
         .then((model) => setState(() => _model = model))
         .then((_) => _vosk.createRecognizer(model: _model!, sampleRate: _sampleRate))
         .then((value) => _recognizer = value)
         .then((recognizer) {
-          if(Platform.isAndroid) {
-            _vosk.initSpeechService(_recognizer!)
+      if(Platform.isAndroid) {
+        _vosk.initSpeechService(_recognizer!)
             .then((speechService) =>
-                setState(() => _speechService = speechService))
+            setState(() => _speechService = speechService))
             .catchError((e) => setState(() => _error = e.toString()));
-          }
+      }
     }).catchError((e) {
       setState(() {
         _error = e.toString();
       });
       return null;
     });
-
   }
+
 
   @override
   Widget build(BuildContext context) {
