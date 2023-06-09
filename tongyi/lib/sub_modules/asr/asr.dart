@@ -1,176 +1,195 @@
-import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:speech_to_text/speech_to_text.dart';
-import 'package:speech_to_text/speech_to_text_provider.dart';
-import 'recognition_results_widget.dart';
+import 'package:record/record.dart';
+import 'package:vosk_flutter/vosk_flutter.dart';
 
-void main() => runApp(const ProviderDemoApp());
-
-class ProviderDemoApp extends StatefulWidget {
-  const ProviderDemoApp({Key? key}) : super(key: key);
-
-  @override
-  State<ProviderDemoApp> createState() => _ProviderDemoAppState();
+void main() {
+  runApp(const MyApp());
 }
 
-class _ProviderDemoAppState extends State<ProviderDemoApp> {
-  final SpeechToText speech = SpeechToText();
-  late SpeechToTextProvider speechProvider;
-
-  @override
-  void initState() {
-    super.initState();
-    speechProvider = SpeechToTextProvider(speech);
-    initSpeechState();
-  }
-
-  Future<void> initSpeechState() async {
-    await speechProvider.initialize();
-  }
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<SpeechToTextProvider>.value(
-      value: speechProvider,
-      child: MaterialApp(
-        home: Scaffold(
-          appBar: AppBar(
-            title: const Text('Speech to Text Provider Example'),
-          ),
-          body: const SpeechProviderExampleWidget(),
-        ),
-      ),
+    return const MaterialApp(
+      home: VoskFlutterDemo(),
     );
   }
 }
 
-class SpeechProviderExampleWidget extends StatefulWidget {
-  const SpeechProviderExampleWidget({Key? key}) : super(key: key);
+class VoskFlutterDemo extends StatefulWidget {
+  const VoskFlutterDemo({Key? key}) : super(key: key);
 
   @override
-  SpeechProviderExampleWidgetState createState() =>
-      SpeechProviderExampleWidgetState();
+  State<VoskFlutterDemo> createState() => _VoskFlutterDemoState();
 }
 
-class SpeechProviderExampleWidgetState
-    extends State<SpeechProviderExampleWidget> {
-  String _currentLocaleId = '';
+class _VoskFlutterDemoState extends State<VoskFlutterDemo> {
+  static const _textStyle = TextStyle(fontSize: 30, color: Colors.black);
+  static const _modelName = 'assets/models/vosk-model-small-en-us-0.15.zip';
+  static const _sampleRate = 16000;
 
-  void _setCurrentLocale(SpeechToTextProvider speechProvider) {
-    if (speechProvider.isAvailable && _currentLocaleId.isEmpty) {
-      _currentLocaleId = speechProvider.systemLocale?.localeId ?? '';
-    }
+  final _vosk = VoskFlutterPlugin.instance();
+  final _modelLoader = ModelLoader();
+  final _recorder = Record();
+
+  String? _fileRecognitionResult;
+  String? _error;
+  Model? _model;
+  Recognizer? _recognizer;
+  SpeechService? _speechService;
+
+  bool _recognitionStarted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    /// load from server
+    // _modelLoader
+    //     .loadModelsList()
+    //     .then((modelsList) =>
+    //     modelsList.firstWhere((model) => model.name == _modelName))
+    //     .then((modelDescription) =>
+    //     _modelLoader.loadFromNetwork(modelDescription.url)) // load model
+    //     .then(
+    //         (modelPath) => _vosk.createModel(modelPath)) // create model object
+    //     .then((model) => setState(() => _model = model))
+    //     .then((_) => _vosk.createRecognizer(
+    //     model: _model!, sampleRate: _sampleRate)) // create recognizer
+    //     .then((value) => _recognizer = value)
+    //     .then((recognizer) {
+    //   if (Platform.isAndroid) {
+    //     _vosk
+    //         .initSpeechService(_recognizer!) // init speech service
+    //         .then((speechService) =>
+    //         setState(() => _speechService = speechService))
+    //         .catchError((e) => setState(() => _error = e.toString()));
+    //   }
+    // }).catchError((e) {
+    //   setState(() => _error = e.toString());
+    //   return null;
+    // });
+    /// load from asset
+    _modelLoader.loadFromAssets(_modelName)
+        .then((modelPath) => _vosk.createModel(modelPath))
+        .then((model) => setState(() => _model = model))
+        .then((_) => _vosk.createRecognizer(model: _model!, sampleRate: _sampleRate))
+        .then((value) => _recognizer = value)
+        .then((recognizer) {
+          if(Platform.isAndroid) {
+            _vosk.initSpeechService(_recognizer!)
+            .then((speechService) =>
+                setState(() => _speechService = speechService))
+            .catchError((e) => setState(() => _error = e.toString()));
+          }
+    }).catchError((e) {
+      setState(() {
+        _error = e.toString();
+      });
+      return null;
+    });
+
   }
 
   @override
   Widget build(BuildContext context) {
-    var speechProvider = Provider.of<SpeechToTextProvider>(context);
-    if (speechProvider.isNotAvailable) {
-      return const Center(
-        child: Text(
-            'Speech recognition not available, no permission or not available on the device.'),
-      );
-    }
-    _setCurrentLocale(speechProvider);
-    return Column(children: [
-      const Center(
-        child: Text(
-          'Speech recognition available',
-          style: TextStyle(fontSize: 22.0),
+    if (_error != null) {
+      return Scaffold(
+          body: Center(child: Text("Error: $_error", style: _textStyle)));
+    } else if (_model == null) {
+      return const Scaffold(
+          body: Center(child: Text("Loading model...", style: _textStyle)));
+    } else if (Platform.isAndroid && _speechService == null) {
+      return const Scaffold(
+        body: Center(
+          child: Text("Initializing speech service...", style: _textStyle),
         ),
-      ),
-      Column(
-        children: <Widget>[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: <Widget>[
-              TextButton(
-                onPressed:
-                !speechProvider.isAvailable || speechProvider.isListening
-                    ? null
-                    : () => speechProvider.listen(
-                    partialResults: true, localeId: _currentLocaleId),
-                child: const Text('Start'),
-              ),
-              TextButton(
-                onPressed: speechProvider.isListening
-                    ? () => speechProvider.stop()
-                    : null,
-                child: const Text('Stop'),
-              ),
-              TextButton(
-                onPressed: speechProvider.isListening
-                    ? () => speechProvider.cancel()
-                    : null,
-                child: const Text('Cancel'),
-              ),
-            ],
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: <Widget>[
-              DropdownButton(
-                onChanged: (selectedVal) => _switchLang(selectedVal),
-                value: _currentLocaleId,
-                items: speechProvider.locales
-                    .map(
-                      (localeName) => DropdownMenuItem(
-                    value: localeName.localeId,
-                    child: Text(localeName.name),
-                  ),
-                )
-                    .toList(),
-              ),
-            ],
-          )
-        ],
-      ),
-      const Expanded(
-        flex: 4,
-        child: RecognitionResultsWidget(),
-      ),
-      Expanded(
-        flex: 1,
+      );
+    } else {
+      return Platform.isAndroid ? _androidExample() : _commonExample();
+    }
+  }
+
+  Widget _androidExample() {
+    return Scaffold(
+      body: Center(
         child: Column(
-          children: <Widget>[
-            const Center(
-              child: Text(
-                'Error Status',
-                style: TextStyle(fontSize: 22.0),
-              ),
-            ),
-            Center(
-              child: speechProvider.hasError
-                  ? Text(speechProvider.lastError!.errorMsg)
-                  : Container(),
-            ),
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+                onPressed: () async {
+                  if (_recognitionStarted) {
+                    await _speechService!.stop();
+                  } else {
+                    await _speechService!.start();
+                  }
+                  setState(() => _recognitionStarted = !_recognitionStarted);
+                },
+                child: Text(_recognitionStarted
+                    ? "Stop recognition"
+                    : "Start recognition")),
+            StreamBuilder(
+                stream: _speechService!.onPartial(),
+                builder: (context, snapshot) => Text(
+                    "Partial result: ${snapshot.data.toString()}",
+                    style: _textStyle)),
+            StreamBuilder(
+                stream: _speechService!.onResult(),
+                builder: (context, snapshot) => Text(
+                    "Result: ${snapshot.data.toString()}",
+                    style: _textStyle)),
           ],
         ),
       ),
-      Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        color: Theme.of(context).colorScheme.background,
-        child: Center(
-          child: speechProvider.isListening
-              ? const Text(
-            "I'm listening...",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          )
-              : const Text(
-            'Not listening',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-      ),
-    ]);
+    );
   }
 
-  void _switchLang(selectedVal) {
-    setState(() {
-      _currentLocaleId = selectedVal;
-    });
-    debugPrint(selectedVal);
+  Widget _commonExample() {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+                onPressed: () async {
+                  if (_recognitionStarted) {
+                    await _stopRecording();
+                  } else {
+                    await _recordAudio();
+                  }
+                  setState(() => _recognitionStarted = !_recognitionStarted);
+                },
+                child: Text(
+                    _recognitionStarted ? "Stop recording" : "Record audio")),
+            Text("Final recognition result: $_fileRecognitionResult",
+                style: _textStyle),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _recordAudio() async {
+    try {
+      await _recorder.start(
+          samplingRate: 16000, encoder: AudioEncoder.wav, numChannels: 1);
+    } catch (e) {
+      _error = '$e\n\n Make sure fmedia(https://stsaz.github.io/fmedia/) is installed on Linux';
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    try {
+      final filePath = await _recorder.stop();
+      if (filePath != null) {
+        final bytes = File(filePath).readAsBytesSync();
+        _recognizer!.acceptWaveformBytes(bytes);
+        _fileRecognitionResult = await _recognizer!.getFinalResult();
+      }
+    } catch (e) {
+      _error = '$e\n\n Make sure fmedia(https://stsaz.github.io/fmedia/) is installed on Linux';
+    }
   }
 }
