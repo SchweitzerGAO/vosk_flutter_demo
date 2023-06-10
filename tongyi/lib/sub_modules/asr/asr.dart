@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:record/record.dart';
 import 'package:vosk_flutter/vosk_flutter.dart';
 
+
 void main() {
   runApp(const AsrApp());
 }
@@ -102,7 +103,8 @@ class _VoskFlutterDemoState extends State<VoskFlutterDemo> {
                 onPressed: () async {
                   if (_recognitionStarted) {
                     await _speechService!.stop();
-                  } else {
+                  }
+                  else {
                     await _speechService!.start();
                   }
                   setState(() => _recognitionStarted = !_recognitionStarted);
