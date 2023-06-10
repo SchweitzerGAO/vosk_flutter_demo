@@ -1,3 +1,2 @@
-# translator_app
+# TongYi: An Android translator application leveraging LLMs
 
-An Android translator app
