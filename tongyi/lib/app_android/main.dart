@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:vosk_flutter/vosk_flutter.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter_vibrate/flutter_vibrate.dart';
+import '../utils/loading.dart';
 
 
 void main() {
@@ -30,9 +31,8 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
-  String _asrModelName = 'vosk-model-small-cn-0.22.zip';
-  String _srcVal = '中文';
-  String _tgtVal = '中文';
+  String _srcLang = '中文';
+  String _tgtLang = '中文';
 
   final _sampleRate = 16000;
 
@@ -43,8 +43,11 @@ class _MainPageState extends State<MainPage> {
   Model? _model;
   Recognizer? _recognizer;
   SpeechService? _speechService;
-
+  bool _modelPrepared = false;
   bool _recognitionStarted = false;
+
+  String _asrResult = '';
+
 
   final _availableLangs = [
     '中文',
@@ -56,7 +59,6 @@ class _MainPageState extends State<MainPage> {
     '葡萄牙语'
   ];
 
-
   final _modelList = [
     'vosk-model-small-cn-0.22.zip',
     'vosk-model-small-en-us-0.15.zip',
@@ -64,11 +66,17 @@ class _MainPageState extends State<MainPage> {
     'vosk-model-small-fr-0.22.zip',
     'vosk-model-small-ru-0.22.zip',
     'vosk-model-small-es-0.42.zip',
-    'vosk-model-small-pt-0.22.zip',
+    'vosk-model-small-pt-0.3.zip',
 
   ];
 
   void _loadModel(modelName){
+    setState(() {
+      _asrResult = '';
+
+    });
+
+    modelName = './assets/models/$modelName';
     _modelLoader.loadFromAssets(modelName)
         .then((modelPath) => _vosk.createModel(modelPath))
         .then((model) => setState(() => _model = model))
@@ -76,6 +84,9 @@ class _MainPageState extends State<MainPage> {
         .then((value) => _recognizer = value)
         .then((recognizer) {
       if(Platform.isAndroid) {
+        if(_speechService != null) {
+          _speechService?.dispose();
+        }
         _vosk.initSpeechService(_recognizer!)
             .then((speechService) =>
             setState(() => _speechService = speechService))
@@ -87,17 +98,25 @@ class _MainPageState extends State<MainPage> {
       });
       return null;
     });
+    setState(() {
+      _modelPrepared = true;
+    });
   }
 
   void _swapLang() {
-
+   setState(() {
+     final temp = _srcLang;
+     _srcLang = _tgtLang;
+     _tgtLang = temp;
+     _loadModel(_modelList[_availableLangs.indexOf(_srcLang)]);
+   });
   }
 
 
   @override
   void initState() {
     super.initState();
-    _loadModel(_asrModelName);
+    _loadModel(_modelList[0]);
   }
 
   Widget _buildMainPage(){
@@ -110,16 +129,30 @@ class _MainPageState extends State<MainPage> {
             width: 300,
             height: 500,
             child: StreamBuilder(
-                stream: _speechService!.onPartial(),
-                builder: (context, snapshot) => AutoSizeText(
-                    snapshot.data.toString(),
+                stream: _speechService!.onResult(),
+                builder: (context, snapshot) {
+                  String data = snapshot.data.toString();
+                  if(data == 'null') {
+                    data = '';
+                  }
+                  data = data == '' ? data : data.substring(14,data.length - 3);
+                  if(_srcLang == '中文' || _srcLang == '日语') {
+                    data = data.replaceAll(' ', '');
+                  }
+                  _asrResult = data;
+                  if(_asrResult != '') {
+                    debugPrint(_asrResult);
+                  }
+                  return AutoSizeText(
+                    data,
                     style: const TextStyle(fontSize: 25),
                     maxLines: 3,
-                    )),
+                  );
+                }),
           ),
           FloatingActionButton.large(
               onPressed:() async {
-                Vibrate.feedback(FeedbackType.selection);
+                Vibrate.feedback(FeedbackType.medium);
                 if (_recognitionStarted) {
                   await _speechService!.stop();
                 }
@@ -142,46 +175,51 @@ class _MainPageState extends State<MainPage> {
   Widget _buildSelectBox() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8.0),
-      child: ButtonBar(
-        children: <Widget>[
-          DropdownButton(
-              value: _srcVal,
-              items: _availableLangs.map<DropdownMenuItem<String>> ((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (String? value) {
-                setState(() {
-                    _srcVal = value!;
-                });
-                _loadModel(_modelList[_availableLangs.indexOf(_srcVal)]);
-              }
-          ),
-          IconButton(
-              onPressed: _swapLang,
-              icon: const Icon(Icons.swap_horiz_outlined)
-          ),
-          DropdownButton(
-              value: _tgtVal,
-              items: _availableLangs.map<DropdownMenuItem<String>> ((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (String? value) {
-                setState(() {
-                  _tgtVal = value!;
-                });
-              }
-          ),
+      child: ProgressDialog(
+        loading: _modelPrepared,
+        msg: '语音识别模型加载中...',
+        child: ButtonBar(
+          alignment: MainAxisAlignment.center,
+          children: <Widget>[
+            DropdownButton(
+                value: _srcLang,
+                items: _availableLangs.map<DropdownMenuItem<String>> ((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (String? value) {
+                  setState(() {
+                    _srcLang = value!;
+                  });
+                  _loadModel(_modelList[_availableLangs.indexOf(_srcLang)]);
+                }
+            ),
+            IconButton(
+                onPressed: _swapLang,
+                icon: const Icon(Icons.swap_horiz_outlined)
+            ),
+            DropdownButton(
+                value: _tgtLang,
+                items: _availableLangs.map<DropdownMenuItem<String>> ((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (String? value) {
+                  setState(() {
+                    _tgtLang = value!;
+                  });
+                }
+            ),
 
-        ],
+          ],
 
 
-      ),
+        ),
+      )
     );
   }
 
@@ -194,11 +232,11 @@ class _MainPageState extends State<MainPage> {
           body: Center(child: Text("Error: $_error")));
     } else if (_model == null) {
       return const Scaffold(
-          body: Center(child: Text("Loading model...")));
+          body: Center(child: Text("加载模型中...")));
     } else if (Platform.isAndroid && _speechService == null) {
       return const Scaffold(
         body: Center(
-          child: Text("Initializing speech service..."),
+          child: Text("正在加载语音服务..."),
         ),
       );
     } else {
