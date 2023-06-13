@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:vosk_flutter/vosk_flutter.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter_vibrate/flutter_vibrate.dart';
-import '../utils/loading.dart';
 
 
 void main() {
@@ -43,7 +42,6 @@ class _MainPageState extends State<MainPage> {
   Model? _model;
   Recognizer? _recognizer;
   SpeechService? _speechService;
-  bool _modelPrepared = false;
   bool _recognitionStarted = false;
 
   String _asrResult = '';
@@ -73,7 +71,6 @@ class _MainPageState extends State<MainPage> {
   void _loadModel(modelName){
     setState(() {
       _asrResult = '';
-
     });
 
     modelName = './assets/models/$modelName';
@@ -97,9 +94,6 @@ class _MainPageState extends State<MainPage> {
         _error = e.toString();
       });
       return null;
-    });
-    setState(() {
-      _modelPrepared = true;
     });
   }
 
@@ -175,51 +169,47 @@ class _MainPageState extends State<MainPage> {
   Widget _buildSelectBox() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8.0),
-      child: ProgressDialog(
-        loading: _modelPrepared,
-        msg: '语音识别模型加载中...',
-        child: ButtonBar(
-          alignment: MainAxisAlignment.center,
-          children: <Widget>[
-            DropdownButton(
-                value: _srcLang,
-                items: _availableLangs.map<DropdownMenuItem<String>> ((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (String? value) {
-                  setState(() {
-                    _srcLang = value!;
-                  });
-                  _loadModel(_modelList[_availableLangs.indexOf(_srcLang)]);
-                }
-            ),
-            IconButton(
-                onPressed: _swapLang,
-                icon: const Icon(Icons.swap_horiz_outlined)
-            ),
-            DropdownButton(
-                value: _tgtLang,
-                items: _availableLangs.map<DropdownMenuItem<String>> ((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (String? value) {
-                  setState(() {
-                    _tgtLang = value!;
-                  });
-                }
-            ),
+      child: ButtonBar(
+        alignment: MainAxisAlignment.center,
+        children: <Widget>[
+          DropdownButton(
+              value: _srcLang,
+              items: _availableLangs.map<DropdownMenuItem<String>> ((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (String? value) {
+                setState(() {
+                  _srcLang = value!;
+                });
+                _loadModel(_modelList[_availableLangs.indexOf(_srcLang)]);
+              }
+          ),
+          IconButton(
+              onPressed: _swapLang,
+              icon: const Icon(Icons.swap_horiz_outlined)
+          ),
+          DropdownButton(
+              value: _tgtLang,
+              items: _availableLangs.map<DropdownMenuItem<String>> ((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (String? value) {
+                setState(() {
+                  _tgtLang = value!;
+                });
+              }
+          ),
 
-          ],
+        ],
 
 
-        ),
-      )
+      ),
     );
   }
 
