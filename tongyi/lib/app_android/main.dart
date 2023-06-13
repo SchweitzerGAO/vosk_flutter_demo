@@ -31,7 +31,7 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   String _srcLang = '中文';
-  String _tgtLang = '中文';
+  String _tgtLang = '英语';
 
   final _sampleRate = 16000;
 
@@ -54,7 +54,7 @@ class _MainPageState extends State<MainPage> {
     '法语',
     '俄语',
     '西班牙语',
-    '葡萄牙语'
+    '葡萄牙语',
   ];
 
   final _modelList = [
@@ -68,7 +68,7 @@ class _MainPageState extends State<MainPage> {
 
   ];
 
-  void _loadModel(modelName){
+  void _loadModel(modelName) {
     setState(() {
       _asrResult = '';
     });
@@ -183,6 +183,8 @@ class _MainPageState extends State<MainPage> {
               onChanged: (String? value) {
                 setState(() {
                   _srcLang = value!;
+                  _recognitionStarted = false;
+                  _speechService!.cancel();
                 });
                 _loadModel(_modelList[_availableLangs.indexOf(_srcLang)]);
               }
