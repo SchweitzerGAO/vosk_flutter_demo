@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:vosk_flutter/vosk_flutter.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter_vibrate/flutter_vibrate.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 
 void main() {
@@ -55,6 +56,7 @@ class _MainPageState extends State<MainPage> {
     '俄语',
     '西班牙语',
     '葡萄牙语',
+    '阿拉伯语'
   ];
 
   final _modelList = [
@@ -65,7 +67,7 @@ class _MainPageState extends State<MainPage> {
     'vosk-model-small-ru-0.22.zip',
     'vosk-model-small-es-0.42.zip',
     'vosk-model-small-pt-0.3.zip',
-
+    'vosk-model-ar-mgb2-0.4.zip'
   ];
 
   void _loadModel(modelName) {
@@ -181,12 +183,22 @@ class _MainPageState extends State<MainPage> {
                 );
               }).toList(),
               onChanged: (String? value) {
+                Fluttertoast.showToast(
+                    msg: '正在加载语音识别模型',
+                    gravity: ToastGravity.BOTTOM,
+                    textColor: Colors.white
+                );
                 setState(() {
                   _srcLang = value!;
                   _recognitionStarted = false;
                   _speechService!.cancel();
                 });
                 _loadModel(_modelList[_availableLangs.indexOf(_srcLang)]);
+                Fluttertoast.showToast(
+                    msg: '语音识别模型加载完成',
+                    gravity: ToastGravity.BOTTOM,
+                    textColor: Colors.white
+                );
               }
           ),
           IconButton(
