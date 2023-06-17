@@ -6,7 +6,7 @@ class FCNormFC(nn.Module):
     def __init__(self, in_features, out_features):
         super().__init__()
         self.fc1 = nn.Linear(in_features, out_features)
-        self.bn = nn.BatchNorm1d(1)
+        self.bn = nn.BatchNorm1d(out_features)
         self.act = nn.LeakyReLU()
         self.fc2 = nn.Linear(out_features, out_features)
 
@@ -14,7 +14,7 @@ class FCNormFC(nn.Module):
         out = self.fc1(X)
         out = self.bn(out)
         out = self.act(out)
-        return self.fc2(out).transpose(1, 2)
+        return self.fc2(out).T
 
 
 class TransNorm(nn.Module):
@@ -34,7 +34,7 @@ class Discriminator(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, in_features, num_features, out_features, in_channels, out_channels, kernel_size, conv_nums=3):
+    def __init__(self, in_features, out_features, in_channels, num_features, out_channels, kernel_size, conv_nums=3):
         super().__init__()
         self.fc_norm_fc_blk = FCNormFC(in_features, out_features)
         self.trans_norm_blks = []
@@ -46,13 +46,11 @@ class Generator(nn.Module):
         out = self.fc_norm_fc_blk(X)
         for blk in self.trans_norm_blks:
             out = blk(out)
-        return self.act(out)
+        return self.act(out).T
 
 
 if __name__ == '__main__':
-    X = torch.randn(1, 1, 100)
-    fc_norm_fc = FCNormFC(100, 1024)
-    y = fc_norm_fc(X)
-    trans_norm = TransNorm(1024, 1, 256, 4)
-    y = trans_norm(y)
+    X = torch.randn(8, 100)
+    gen = Generator(100, 1024, [1024, 256, 128], [8, 11, 14], [256, 128, 64], 4)
+    y = gen(X)
     pass
