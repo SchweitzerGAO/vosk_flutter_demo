@@ -42,7 +42,14 @@ class ConvNorm(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, in_features, hid_features, out_features, in_channels, num_features, out_channels, kernel_size,
+    def __init__(self,
+                 in_features,
+                 hid_features,
+                 out_features,
+                 in_channels,
+                 num_features,
+                 out_channels,
+                 kernel_size,
                  conv_nums=3):
         super().__init__()
         self.fc_norm_fc_blk = FCNormFC(in_features, hid_features, out_features)
@@ -60,7 +67,14 @@ class Discriminator(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, in_features, hid_features, out_features, in_channels, num_features, out_channels, kernel_size,
+    def __init__(self,
+                 in_features,
+                 hid_features,
+                 out_features,
+                 in_channels,
+                 num_features,
+                 out_channels,
+                 kernel_size,
                  conv_nums=3):
         super().__init__()
         self.fc_norm_fc_blk = FCNormFC(in_features, hid_features, out_features)
