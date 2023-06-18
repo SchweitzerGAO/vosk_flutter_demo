@@ -259,13 +259,19 @@ class _MainPageState extends State<MainPage> {
       margin: const EdgeInsets.symmetric(horizontal: 8.0),
       child: Row(
         children: <Widget>[
-          Flexible(
-            child: TextField(
-              controller: _textController,
-              onChanged: (String text) {},
-              decoration: const InputDecoration.collapsed(hintText: ''),
-            ),
-          ),
+          Expanded(
+      child: TextField(
+        controller: _textController,
+        keyboardType: TextInputType.multiline,
+        maxLines: null,
+        minLines: 1,
+        decoration: const InputDecoration(
+          hintText: '输入',
+          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          isDense: true,
+        ),
+      ),
+    ),
           ElevatedButton(onPressed: () {
             if (_textController.text.isNotEmpty){
               tts.speak(_textController.text);
