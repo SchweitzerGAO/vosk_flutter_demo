@@ -6,6 +6,8 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter_vibrate/flutter_vibrate.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
+import 'package:text_to_speech/text_to_speech.dart';
+
 
 void main() {
   runApp(const MainApp());
@@ -43,7 +45,11 @@ class _MainPageState extends State<MainPage> {
   Model? _model;
   Recognizer? _recognizer;
   SpeechService? _speechService;
+  TextToSpeech tts = TextToSpeech();
   bool _recognitionStarted = false;
+
+  // This is just for the tts test, not using in official releases
+  final TextEditingController _textController = TextEditingController();
 
   String _asrResult = '';
 
@@ -69,6 +75,17 @@ class _MainPageState extends State<MainPage> {
     'vosk-model-small-pt-0.3.zip',
     'vosk-model-ar-mgb2-0.4.zip'
   ];
+  final _langToCode = {
+    '中文': 'zh-CN',
+    '英语': 'en-US',
+    '日语': 'ja-JP',
+    '法语': 'fr-FR',
+    '俄语': 'ru-RU',
+    '西班牙语': 'es-ES',
+    '葡萄牙语': 'pt-BR',
+    '阿拉伯语': 'ar'
+  };
+
 
   void _loadModel(modelName) {
     setState(() {
@@ -105,6 +122,7 @@ class _MainPageState extends State<MainPage> {
      _srcLang = _tgtLang;
      _tgtLang = temp;
      _loadModel(_modelList[_availableLangs.indexOf(_srcLang)]);
+     tts.setLanguage(_langToCode[_tgtLang]!);
    });
   }
 
@@ -112,58 +130,66 @@ class _MainPageState extends State<MainPage> {
   @override
   void initState() {
     super.initState();
+    // tts.getLanguages().then((list) {
+    //   for(int i = 0;i < list.length;i++) {
+    //     debugPrint(list[i]);
+    //   }
+    // });
     _loadModel(_modelList[0]);
   }
 
   Widget _buildMainPage(){
    return Scaffold(
-    body: SafeArea(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          SizedBox(
-            width: 300,
-            height: 500,
-            child: StreamBuilder(
-                stream: _speechService!.onResult(),
-                builder: (context, snapshot) {
-                  String data = snapshot.data.toString();
-                  if(data == 'null') {
-                    data = '';
+    body: SingleChildScrollView(
+      child: SafeArea(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            SizedBox(
+              width: 300,
+              height: 500,
+              child: StreamBuilder(
+                  stream: _speechService!.onResult(),
+                  builder: (context, snapshot) {
+                    String data = snapshot.data.toString();
+                    if(data == 'null') {
+                      data = '';
+                    }
+                    data = data == '' ? data : data.substring(14,data.length - 3);
+                    if(_srcLang == '中文' || _srcLang == '日语') {
+                      data = data.replaceAll(' ', '');
+                    }
+                    _asrResult = data;
+                    if(_asrResult != '') {
+                      debugPrint(_asrResult);
+                    }
+                    return AutoSizeText(
+                      data,
+                      style: const TextStyle(fontSize: 25),
+                      maxLines: 3,
+                    );
+                  }),
+            ),
+            FloatingActionButton.large(
+                onPressed:() async {
+                  Vibrate.feedback(FeedbackType.medium);
+                  if (_recognitionStarted) {
+                    await _speechService!.stop();
                   }
-                  data = data == '' ? data : data.substring(14,data.length - 3);
-                  if(_srcLang == '中文' || _srcLang == '日语') {
-                    data = data.replaceAll(' ', '');
+                  else {
+                    await _speechService!.start();
                   }
-                  _asrResult = data;
-                  if(_asrResult != '') {
-                    debugPrint(_asrResult);
-                  }
-                  return AutoSizeText(
-                    data,
-                    style: const TextStyle(fontSize: 25),
-                    maxLines: 3,
-                  );
-                }),
-          ),
-          FloatingActionButton.large(
-              onPressed:() async {
-                Vibrate.feedback(FeedbackType.medium);
-                if (_recognitionStarted) {
-                  await _speechService!.stop();
-                }
-                else {
-                  await _speechService!.start();
-                }
-                setState(() => _recognitionStarted = !_recognitionStarted);
-              },
-              backgroundColor: _recognitionStarted ? Colors.blue : Colors.black87,
-              child: const Icon(Icons.mic)
-          ),
-          _buildSelectBox(),
-        ],
+                  setState(() => _recognitionStarted = !_recognitionStarted);
+                },
+                backgroundColor: _recognitionStarted ? Colors.blue : Colors.black87,
+                child: const Icon(Icons.mic)
+            ),
+            _buildSelectBox(),
+            _buildTTS(),
+          ],
 
-      ),
+        ),
+      )
     ),
    );
   }
@@ -216,6 +242,7 @@ class _MainPageState extends State<MainPage> {
               onChanged: (String? value) {
                 setState(() {
                   _tgtLang = value!;
+                  tts.setLanguage(_langToCode[value]!);
                 });
               }
           ),
@@ -224,6 +251,29 @@ class _MainPageState extends State<MainPage> {
 
 
       ),
+    );
+  }
+
+  Widget _buildTTS() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8.0),
+      child: Row(
+        children: <Widget>[
+          Flexible(
+            child: TextField(
+              controller: _textController,
+              onChanged: (String text) {},
+              decoration: const InputDecoration.collapsed(hintText: ''),
+            ),
+          ),
+          ElevatedButton(onPressed: () {
+            if (_textController.text.isNotEmpty){
+              tts.speak(_textController.text);
+            }
+          },
+          child: const Icon(Icons.volume_up_outlined))
+        ],
+      )
     );
   }
 
