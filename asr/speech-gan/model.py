@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+from hparams import *
+
 
 class FCNormFC(nn.Module):
     def __init__(self, in_features, hid_features, out_features):
@@ -42,9 +44,17 @@ class ConvNorm(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, in_features, hid_features, out_features, in_channels, num_features, out_channels, kernel_size,
-                 conv_nums=3):
+    def __init__(self,
+                 in_features: int,
+                 hid_features: int,
+                 out_features: int,
+                 in_channels: List[int],
+                 num_features: List[int],
+                 out_channels: List[int],
+                 kernel_size: int,
+                 conv_nums: int):
         super().__init__()
+        assert conv_nums == len(in_channels) == len(num_features) == len(out_channels)
         self.fc_norm_fc_blk = FCNormFC(in_features, hid_features, out_features)
         self.conv_blks = []
         for i in range(conv_nums):
@@ -60,9 +70,17 @@ class Discriminator(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, in_features, hid_features, out_features, in_channels, num_features, out_channels, kernel_size,
-                 conv_nums=3):
+    def __init__(self,
+                 in_features: int,
+                 hid_features: int,
+                 out_features: int,
+                 in_channels: List[int],
+                 num_features: List[int],
+                 out_channels: List[int],
+                 kernel_size: int,
+                 conv_nums: int):
         super().__init__()
+        assert conv_nums == len(in_channels) == len(num_features) == len(out_channels)
         self.fc_norm_fc_blk = FCNormFC(in_features, hid_features, out_features)
         self.trans_conv_norm_blks = []
         for i in range(conv_nums):
@@ -78,9 +96,29 @@ class Generator(nn.Module):
 
 
 if __name__ == '__main__':
-    X = torch.randn(8, 100)
-    gen = Generator(100, 1024, 1024, [1024, 256, 128], [8, 11, 14], [256, 128, 64], 4)
+    X = torch.randn(8, 8, 100)
+    gen_hparam = GeneratorHParams()
+    dis_hparam = DiscriminatorHParams()
+    gen = Generator(
+        gen_hparam.in_features,
+        gen_hparam.hid_features,
+        gen_hparam.out_features,
+        gen_hparam.in_channels,
+        gen_hparam.num_features,
+        gen_hparam.out_channels,
+        gen_hparam.kernel_size,
+        gen_hparam.conv_num
+    )
     y = gen(X)
-    dis = Discriminator(1024, 1024, 100, [64, 128, 256], [14, 11, 8], [128, 256, 1024], 4)
+    dis = Discriminator(
+        dis_hparam.in_features,
+        dis_hparam.hid_features,
+        dis_hparam.out_features,
+        dis_hparam.in_channels,
+        dis_hparam.num_features,
+        dis_hparam.out_channels,
+        dis_hparam.kernel_size,
+        dis_hparam.conv_num
+    )
     z = dis(y).T
     pass
