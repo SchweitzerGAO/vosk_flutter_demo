@@ -33,7 +33,7 @@ def resample(path, new_sample_rate=16000):
 
 
 if __name__ == '__main__':
-    files = os.listdir('data')
+    files = os.listdir('../data')
     for file in files:
-        resample(os.path.join('data', file))
+        resample(os.path.join('../data', file))
         print(f'{file} finished resampling')

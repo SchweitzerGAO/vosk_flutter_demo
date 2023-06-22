@@ -91,4 +91,5 @@ def fbank(file_name):
 
 
 if __name__ == '__main__':
+    filtered = fbank('../data/1-8.wav')
     pass
